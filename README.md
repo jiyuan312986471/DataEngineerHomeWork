@@ -34,4 +34,24 @@ include:
 - what types of storage technologies we should use.
 - how is data processing distributed
 
+## Problem analysis
+
+### Data volume
+
+From the problem, we know that a transaction consists of:
+- Amount (int): about 4 bytes
+- PurchaseDate (date): about 8 bytes (considered as `datetime` of MySQL)
+- BusinessId (string): about 128 bytes (assume this field has a length of 128 characters)
+- PaymentInstrumentId (string): about 128 bytes (same as `BusinessId`)
+
+By adding these fields together we can easily know:
+- Size of a single transaction: about 268 bytes
+- Size of 4-year history transaction data: 
+  - 14.6 billion transactions
+  - about 3.56 TB
+- Size of daily data:
+  - 10 million transactions
+  - about 2.50 GB/day
+  - about 116 transactions/second
+  - about 30.36 KB/second
 
