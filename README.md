@@ -91,10 +91,12 @@ And this access requires us to calculate the recurrent customer ratio for each m
 >The data point for each month is the ratio between the number of recurrent customers over the total number of customers.
 
 From the definition and requirement we can set up equation below for the calculation of recurrent customer ratio:
->![RecurRatio](https://latex.codecogs.com/svg.latex?RecurRatio_%7BBu%7D%28M%29%3D%5Cfrac%7BRecurPi_%7BBu%7D%28M%29%7D%7BAllPi_%7BBu%7D%28M%29%7D)
+>![RecurRatio](https://latex.codecogs.com/svg.latex?RecurRatio_%7BBu%7D%28M%29%3D%5Cfrac%7BCount%28RecurPi_%7BBu%7D%28M%29%29%7D%7BCount%28AllPi_%7BBu%7D%28M%29%29%7D)
 
 where:
 - RecurRatio<sub>Bu</sub>(M) stands for recurrent customer ratio for given month `M` and business `Bu`.
 - RecurPi<sub>Bu</sub>(M) stands for set of recurrent customers for given month `M` and business `Bu` (Note that payment 
   instrument `Pi` is used as customer identifier here).
 - AllPi<sub>Bu</sub>(M) stands for set of all customer for given month `M` and business `Bu`. 
+
+
