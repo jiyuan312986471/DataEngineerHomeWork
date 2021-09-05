@@ -75,8 +75,7 @@ transformations, data fetching queries, etc.
 
 For this access, assume given `PiId` is `Pi0` and given `BuId` is `Bu0`. 
 
-The problem can be translated to an SQL 
-statement:
+The problem can be translated to a pseudo SQL statement:
 ```roomsql
 SELECT * FROM Transactions
 WHERE PiId = "Pi0" AND BuId = "Bu0"
@@ -94,9 +93,40 @@ From the definition and requirement we can set up equation below for the calcula
 >![RecurRatio](https://latex.codecogs.com/svg.latex?RecurRatio_%7BBu%7D%28M%29%3D%5Cfrac%7BCount%28RecurPi_%7BBu%7D%28M%29%29%7D%7BCount%28AllPi_%7BBu%7D%28M%29%29%7D)
 
 where:
-- RecurRatio<sub>Bu</sub>(M) stands for recurrent customer ratio for given month `M` and business `Bu`.
-- RecurPi<sub>Bu</sub>(M) stands for set of recurrent customers for given month `M` and business `Bu` (Note that payment 
+- RecurRatio<sub>Bu</sub>(M): recurrent customer ratio for given month `M` and business `Bu`.
+- RecurPi<sub>Bu</sub>(M): set of recurrent customers for given month `M` and business `Bu` (Note that payment 
   instrument `Pi` is used as customer identifier here).
-- AllPi<sub>Bu</sub>(M) stands for set of all customer for given month `M` and business `Bu`. 
+- AllPi<sub>Bu</sub>(M): set of all customers for given month `M` and business `Bu`. 
 
+We can describe AllPi<sub>Bu</sub>(M) and RecurPi<sub>Bu</sub>(M) by a pseudo SQL statement for each:
 
+- AllPi<sub>Bu</sub>(M):
+  ```roomsql
+  SELECT DISTINCT PiId FROM Transactions
+  WHERE BuId = "Bu"
+    AND Tdate IN M
+  ```
+
+- RecurPi<sub>Bu</sub>(M):
+  ```roomsql
+  SELECT DISTINCT PiId FROM Transactions
+  WHERE BuId = "Bu"
+    AND Tdate IN M
+    AND PiId IN (
+        SELECT PiId FROM #Lpi_Bu_M
+        )
+  ```
+  where `#Lpi_Bu_M`(denoted Lpi<sub>Bu</sub>(M) in the equations) stands for set of customers having purchased in the 
+  past 12 months (from M-12 included to M excluded) for a given business `Bu`. Lpi<sub>Bu</sub>(M) can also be 
+  described by a pseudo SQL statement:
+  ```roomsql
+  SELECT DISTINCT PiId FROM Transactions
+  WHERE BuId = "Bu"
+    AND Tdate BETWEEN M-12 AND M
+  ```
+  
+To sum everything up for calculation of recurrent customer ratio:
+1. Get AllPi<sub>Bu</sub>(M)
+2. Get Lpi<sub>Bu</sub>(M)
+3. Get RecurPi<sub>Bu</sub>(M) by using Lpi<sub>Bu</sub>(M)
+4. Calculate RecurRatio<sub>Bu</sub>(M)
