@@ -152,3 +152,5 @@ In this case, we could use Hadoop ecosystem and build a cluster:
     table, data are physically divided in directories on HDFS so that when we query the table with `WHERE` clause on 
     `BuId` column and/or on `Tdate` column, much fewer data will be loaded, thus a shorter response time.
 
+The Hadoop ecosystem architecture will look like this:
+![Hadoop_architecture](https://www.itbusinessedge.com/wp-content/uploads/2021/02/cloudera-delivers-on-impala-sql-promise-for-hadoop_6037f2345fe4a.png)
