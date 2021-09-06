@@ -37,10 +37,10 @@ include:
 ## Problem analysis
 
 From the problem description, we know that a transaction (denoted `Trans` or `trans`) consists of:
-- Amount[int] (denoted `Amt`)
-- PurchaseDate[date] (denoted `Tdate`)
-- BusinessId[string] (denoted `BuId`)
-- PaymentInstrumentId[string] (denoted `PiId`)
+- Amount [int] (denoted `Amt`)
+- Purchase Date [date] (denoted `Tdate`)
+- Business Id [string] (denoted `BuId`)
+- Payment Instrument Id [string] (denoted `PiId`)
 
 In order not to make problem more complex, we assume that each customer has only one payment instrument. Thus, our `PiId`
 could be used as an **IDENTIFIER** for customers.
@@ -130,3 +130,25 @@ To sum everything up for calculation of recurrent customer ratio:
 2. Get Lpi<sub>Bu</sub>(M)
 3. Get RecurPi<sub>Bu</sub>(M) by using Lpi<sub>Bu</sub>(M)
 4. Calculate RecurRatio<sub>Bu</sub>(M)
+
+## Solution
+
+### Data storage
+
+From problem analysis we know:
+- The whole historical data volume is about 3.56 TB and all required data accesses will
+  query these data. 
+- Most of the access queries select `PiId`, and filter on `BuId` and `Tdate`
+
+In this case, we could use Hadoop ecosystem and build a cluster:
+- Data Storage: HDFS
+  - Data can be distributed on HDFS throughout the whole cluster
+  - Data are replicated to have a fault-tolerant feature
+- SQL-like query engine and data warehouse: Impala
+  - Table can be stored in Parquet format (configured via Impala) to achieve shorter query time and to have less disk 
+    consumption
+  - Unlike MapReduce which created huge amount of disk I/O, Impala benefits from the memory usage during calculation
+  - By using a `PARTITIONED BY` clause on `BuId`, `year(Tdate)` and `month(Tdate)` while creating the `Transactions` 
+    table, data are physically divided in directories on HDFS so that when we query the table with `WHERE` clause on 
+    `BuId` column and/or on `Tdate` column, much fewer data will be loaded, thus a shorter response time.
+
