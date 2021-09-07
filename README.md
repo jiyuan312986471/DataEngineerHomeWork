@@ -42,25 +42,28 @@ From the problem description, we know that a transaction (denoted `Trans` or `tr
 - Business Id [string] (denoted `BuId`)
 - Payment Instrument Id [string] (denoted `PiId`)
 
+We also assume that an incoming transaction has an `Id` [string] column to identify the transaction itself. 
+
 In order not to make problem more complex, we assume that each customer has only one payment instrument. Thus, our `PiId`
 could be used as an **IDENTIFIER** for customers.
 
 ### Data volume
 
-We can roughly estimate the data size as following: 
+We can roughly estimate the data size as following:
+- `Id[string]`: about 128 bytes (assume this field has a length of 128 characters)
 - `Amt[int]`: about 4 bytes
 - `Tdate[date]`: about 8 bytes (considered as `datetime` of MySQL)
-- `BuId[string]`: about 128 bytes (assume this field has a length of 128 characters)
-- `PiId[string]`: about 128 bytes (same as `BuId`)
+- `BuId[string]`: about 128 bytes (same as `Id`)
+- `PiId[string]`: about 128 bytes (same as `Id`)
 
 By adding these fields together we can easily know:
 - Size of a single `Trans`: about 268 bytes
 - Size of 4-year history transaction data: 
   - 14.6 billion `Trans`
-  - about 3.56 TB
+  - about 5.26 TB
 - Size of stream data:
   - 10 million trans/day = 416.67K trans/hour = 116 trans/second
-  - about 2.50 GB/day = 106.73 MB/hour = 30.36 KB/second
+  - about 3.69 GB/day = 157.71 MB/hour = 44.86 KB/second
 
 ### Data accesses
 
@@ -136,7 +139,7 @@ To sum everything up for calculation of recurrent customer ratio:
 ### Data storage
 
 From problem analysis we know:
-- The whole historical data volume is about 3.56 TB and all required data accesses will
+- The whole historical data volume is about 5.26 TB and all required data accesses will
   query these data. 
 - Most of the access queries select `PiId`, and filter on `BuId` and `Tdate`
 
@@ -154,3 +157,23 @@ In this case, we could use Hadoop ecosystem and build a cluster:
 
 The Hadoop ecosystem architecture will look like this:
 ![Hadoop_architecture](https://www.itbusinessedge.com/wp-content/uploads/2021/02/cloudera-delivers-on-impala-sql-promise-for-hadoop_6037f2345fe4a.png)
+
+### Data streaming pipeline
+
+To handle with the incoming transaction stream, we could combine:
+- Kafka which plays a role of streaming source for Spark and ensures more-than-once message delivery
+- Spark's Structured Streaming API 
+  - which brings the Spark Core and SQL capabilities to stream data processing
+  - which applies Spark's Dataframe/Dataset API to streaming data as each incoming transaction could be considered and
+    processed as a row of `Dataframe` or `Dataset`
+  - which could deliver end-to-end exactly-once semantics by combining a replayable streaming source (in this case, 
+    Kafka) and an idempotent sink (in this case we have transaction id thus idempotent)
+
+Once streaming data are processed, they will be stored in a cache layer and then flushed to the sink periodically.
+
+The streaming pipeline will look like this:
+![streaming_pipeline](https://databricks.com/wp-content/uploads/2017/04/structured-streaming-kafka-blog-image-1-overview.png)
+
+### Caching
+
+
