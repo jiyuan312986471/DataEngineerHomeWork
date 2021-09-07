@@ -134,7 +134,7 @@ To sum everything up for calculation of recurrent customer ratio:
 3. Get RecurPi<sub>Bu</sub>(M) by using Lpi<sub>Bu</sub>(M)
 4. Calculate RecurRatio<sub>Bu</sub>(M)
 
-## Solution
+## Architecture solution
 
 ### Data storage
 
@@ -175,5 +175,20 @@ The streaming pipeline will look like this:
 ![streaming_pipeline](https://databricks.com/wp-content/uploads/2017/04/structured-streaming-kafka-blog-image-1-overview.png)
 
 ### Caching
+
+Caching is essential as it accelerates query time in general as well as reduces work on database or data storage side. 
+We could use Redis as a cache layer since Redis is a matured, in-memory, scalable database, which is quite suitable for 
+data caching.
+
+1. We will cache the streaming results to Redis so that when data access queries arrive, they will read data from 
+Redis cache (streaming result) and Impala table (batch result) simultaneously and then combine streaming and batch 
+results together. 
+
+2. From data access type 2 we know that a recurrent customer ratio for any previous month will remain unchanged.
+Thus, all the recurrent customer ratios for previous N months could be pre-calculated and cached in Redis for a shorter 
+query time.
+
+3. For data access type 1 which lists all transactions given by a `BuId` and a `PiId`, we could set a query 
+management mechanism so that most frequent query results will be cached.
 
 
