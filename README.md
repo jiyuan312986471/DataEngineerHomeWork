@@ -180,28 +180,35 @@ Caching is essential as it accelerates query time in general as well as reduces 
 We could use Redis as a cache layer since Redis is a matured, in-memory, scalable database, which is quite suitable for 
 data caching.
 
-1. We will cache the streaming results to Redis so that when data access queries arrive, they will read data from 
-Redis cache (streaming result) and Impala table (batch result) simultaneously and then combine streaming and batch 
-results together. 
-
-2. From data access type 2 we know that a recurrent customer ratio for any previous month will remain unchanged.
+1. From data access type 2 we know that a recurrent customer ratio for any previous month will remain unchanged.
 Thus, all the recurrent customer ratios for previous N months could be pre-calculated and cached in Redis for a shorter 
 query time.
-
-3. Also, for data access type 2, since we periodically flush cache data to data storage, then after each cache flush, 
-the batch job to calculate recurrent customer ratio for current month should be rerun. And we store this periodically 
-updated result into cache.
-
-5. For data access type 1 which lists all transactions given by a `BuId` and a `PiId`, we could set a query 
+2. Also, for data access type 2, we could cache several data for current month M: 
+   1. Lpi<sub>Bu</sub>(M) because it's immutable in time
+   2. AllPi<sub>Bu</sub>(M) in the form of Set and will be updated by streaming data
+   3. RecurPi<sub>Bu</sub>(M) in the form of Set and will be updated by streaming data
+3. For data access type 1 which lists all transactions given by a `BuId` and a `PiId`, we could set a query 
 management mechanism so that most frequent query results will be cached.
+
+>Note: For point 2, all these 3 data measures (Lpi<sub>Bu</sub>(M), AllPi<sub>Bu</sub>(M)) and RecurPi<sub>Bu</sub>(M)) 
+>are recalculated in the beginning of every month.
 
 ## Data processing jobs
 
-Several spark jobs are created for different purpose:
+Several scripts are created for different purpose:
 - [StructuredStreamingApp](src/main/java/StructuredStreamingApp.java):
-  - Job of streaming processing
-- [BatchJobsApp](src/main/java/BatchJobsApp.java)
-  - Job of batch processing
-    - Getting list of transactions given by `BuId` and `PiId`
+  - Streaming App which:
+    - reads streaming data from source (file in demo, Kafka in production) 
+    - updates cache (AllPi<sub>Bu</sub>(M) and RecurPi<sub>Bu</sub>(M) in Redis)
+    - saves to sink (Redis in demo, Impala in production)
+- [RecurrentCustomerRatioCalculator](src/main/java/RecurrentCustomerRatioCalculator.java):
+  - Batch processing for:
     - Calculating recurrent customer ratio for current month
     - Getting historical recurrent customer ratio data along with the one of current month
+- [LpiCacheUpdater](src/main/java/LpiCacheUpdater.java):
+  - Batch processing at beginning of every month for:
+    - Recalculating Lpi<sub>Bu</sub>(M)
+    - Clearing and recalculating AllPi<sub>Bu</sub>(M)
+    - Clearing and recalculating RecurPi<sub>Bu</sub>(M)
+- [CacheInitializer](src/main/java/CacheInitializer.java):
+  - Batch processing job to initiate system state, especially foobar data and cache initialization.
