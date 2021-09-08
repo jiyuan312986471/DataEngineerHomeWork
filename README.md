@@ -134,7 +134,7 @@ To sum everything up for calculation of recurrent customer ratio:
 3. Get RecurPi<sub>Bu</sub>(M) by using Lpi<sub>Bu</sub>(M)
 4. Calculate RecurRatio<sub>Bu</sub>(M)
 
-## Architecture solution
+## Solution architecture
 
 ### Data storage
 
@@ -188,7 +188,20 @@ results together.
 Thus, all the recurrent customer ratios for previous N months could be pre-calculated and cached in Redis for a shorter 
 query time.
 
-3. For data access type 1 which lists all transactions given by a `BuId` and a `PiId`, we could set a query 
+3. Also, for data access type 2, since we periodically flush cache data to data storage, then after each cache flush, 
+the batch job to calculate recurrent customer ratio for current month should be rerun. And we store this periodically 
+updated result into cache.
+
+5. For data access type 1 which lists all transactions given by a `BuId` and a `PiId`, we could set a query 
 management mechanism so that most frequent query results will be cached.
 
+## Data processing jobs
 
+Several spark jobs are created for different purpose:
+- [StructuredStreamingApp](src/main/java/StructuredStreamingApp.java):
+  - Job of streaming processing
+- [BatchJobsApp](src/main/java/BatchJobsApp.java)
+  - Job of batch processing
+    - Getting list of transactions given by `BuId` and `PiId`
+    - Calculating recurrent customer ratio for current month
+    - Getting historical recurrent customer ratio data along with the one of current month
