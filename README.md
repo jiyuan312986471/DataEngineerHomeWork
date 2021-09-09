@@ -207,6 +207,7 @@ Several scripts are created for different purpose:
     - Getting historical recurrent customer ratio data along with the one of current month
 - [LpiCacheUpdater](src/main/java/LpiCacheUpdater.java):
   - Batch processing at beginning of every month for:
+    - Save previous month's final recurrent customer ratio 
     - Recalculating Lpi<sub>Bu</sub>(M)
     - Clearing and recalculating AllPi<sub>Bu</sub>(M)
     - Clearing and recalculating RecurPi<sub>Bu</sub>(M)
