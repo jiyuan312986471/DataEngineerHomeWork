@@ -5,7 +5,6 @@ import org.apache.spark.sql.types.*;
 import redis.clients.jedis.Jedis;
 import scala.collection.mutable.Seq;
 
-import java.time.LocalDate;
 import java.util.Iterator;
 
 public class CacheInitializer {
