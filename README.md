@@ -198,8 +198,7 @@ management mechanism so that most frequent query results will be cached.
 Several scripts are created for different purpose:
 - [StructuredStreamingApp](src/main/java/StructuredStreamingApp.java):
   - Streaming App which:
-    - reads streaming data from source (file in demo, Kafka in production) 
-    - updates cache (AllPi<sub>Bu</sub>(M) and RecurPi<sub>Bu</sub>(M) in Redis)
+    - reads streaming data from source (file in demo, Kafka in production)
     - saves to sink (Redis in demo, Impala in production)
 - [RecurrentCustomerRatioCalculator](src/main/java/RecurrentCustomerRatioCalculator.java):
   - Batch processing for:
@@ -207,8 +206,8 @@ Several scripts are created for different purpose:
     - Getting historical recurrent customer ratio data along with the one of current month
 - [LpiCacheUpdater](src/main/java/LpiCacheUpdater.java):
   - Batch processing at beginning of every month for:
-    - Save previous month's final recurrent customer ratio 
-    - Recalculating Lpi<sub>Bu</sub>(M)
+    - Saving previous month's final recurrent customer ratio 
+    - Clearing and recalculating Lpi<sub>Bu</sub>(M)
     - Clearing and recalculating AllPi<sub>Bu</sub>(M)
     - Clearing and recalculating RecurPi<sub>Bu</sub>(M)
 - [CacheInitializer](src/main/java/CacheInitializer.java):
