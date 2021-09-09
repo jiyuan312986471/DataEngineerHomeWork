@@ -1,17 +1,18 @@
-import org.apache.spark.api.java.function.ForeachPartitionFunction;
 import org.apache.spark.api.java.function.VoidFunction2;
 import org.apache.spark.sql.*;
-import org.apache.spark.sql.functions;
 import org.apache.spark.sql.streaming.OutputMode;
 import org.apache.spark.sql.streaming.StreamingQuery;
 import org.apache.spark.sql.streaming.StreamingQueryException;
 import org.apache.spark.sql.types.*;
-import redis.clients.jedis.Jedis;
-import scala.collection.mutable.Seq;
-
-import java.util.Iterator;
 
 public class StructuredStreamingApp {
+    /**
+     * Streaming App handling incoming transaction data.
+     *
+     * For demo, App receives data from file source and sink to Redis DB
+     * For production, App receives data from Kafka source and sink to Impala
+     */
+
     private final static String redisHost = "localhost";
     private final static int redisPort = 6379;
 
@@ -53,69 +54,26 @@ public class StructuredStreamingApp {
                 .readStream()
                 .option("delimiter", "|")
                 .schema(schema)
-                .csv("data/m8/streaming/");
-
-        // AllPi by business
-        Dataset<Row> allPi = rows.groupBy("buId")
-                .agg(functions.collect_set("piId").as("piIdSet"))
-                .persist();
-
-        // Update Redis cache: AllPi
-        allPi.foreachPartition(new ForeachPartitionFunction<Row>() {
-            @Override
-            public void call(Iterator<Row> t) throws Exception {
-                Jedis jedis = new Jedis(redisHost, redisPort);
-                while (t.hasNext()) {
-                    Row r = t.next();
-                    Seq<String> piIdSet = r.<Seq<String>>getAs("piIdSet");
-                    scala.collection.Iterator<String> iter = r.<Seq<String>>getAs("piIdSet").iterator();
-                    while (iter.hasNext()) {
-                        String piId = iter.next().toString();
-                        jedis.sadd("AllPi:" + r.<String>getAs("buId"), piId);
-                    }
-                }
-            }
-        });
-
-        // Update Redis cache: RecurPi
-        allPi.foreachPartition(new ForeachPartitionFunction<Row>() {
-            @Override
-            public void call(Iterator<Row> t) throws Exception {
-                Jedis jedis = new Jedis(redisHost, redisPort);
-                while (t.hasNext()) {
-                    Row r = t.next();
-                    Seq<String> piIdSet = r.<Seq<String>>getAs("piIdSet");
-                    scala.collection.Iterator<String> iter = r.<Seq<String>>getAs("piIdSet").iterator();
-                    while (iter.hasNext()) {
-                        String piId = iter.next().toString();
-                        if (jedis.sismember("Lpi:" + r.<String>getAs("buId"), piId)) {
-                            jedis.sadd("RecurPi:" + r.<String>getAs("buId"), piId);
-                        }
-                    }
-                }
-            }
-        });
-
-        // Unpersist AllPi to save memory
-        allPi.unpersist();
+                .csv("data/m9/streaming/");
 
         /*
-        Build streaming query and save rows to sink
+        Streaming query and save to sink
 
         Using Redis for demo, Impala should be used in production.
          */
-        StreamingQuery query = rows.writeStream()
+        StreamingQuery queryRows = rows.writeStream()
                 .outputMode(OutputMode.Update())
                 .foreachBatch((VoidFunction2<Dataset<Row>, Long>) (batchRows, batchId) ->
                         batchRows.write()
                                 .format("org.apache.spark.sql.redis")
-                                .option("spark.redis.host", "localhost")
-                                .option("spark.redis.port", "6379")
+                                .option("spark.redis.host", redisHost)
+                                .option("spark.redis.port", redisPort)
                                 .option("table", "Transactions")
                                 .option("key.column", "id")
+                                .mode(SaveMode.Append)
                                 .save()
                 )
                 .start();
-        query.awaitTermination();
+        queryRows.awaitTermination();
     }
 }

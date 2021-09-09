@@ -12,9 +12,20 @@ public class CacheInitializer {
     private final static int redisPort = 6379;
 
     private final static int initYear = 2021;
-    private final static int initMonth = 8;
+    private final static int initMonth = 9;
 
+    /**
+     * Initialize Lpi in Redis
+     *
+     * This method loads Lpi data from a column delimited file and insert
+     *
+     * @param spark SparkSession
+     * @param dataPath File path of Lpi data
+     * @param sep delimiter
+     */
     private static void initLpi(SparkSession spark, String dataPath, String sep) {
+        Jedis jedis = new Jedis(redisHost, redisPort);
+
         // Raw Lpi data schema
         StructType schema = new StructType()
                 .add("buId", DataTypes.StringType, false)
@@ -28,6 +39,10 @@ public class CacheInitializer {
                 .groupBy("buId")
                 .agg(functions.collect_set("piId").as("piIdSet"));
 
+        // Clear old Lpi cache
+        jedis.eval("return redis.call('del', 'defaultKey', unpack(redis.call('keys', ARGV[1])))",
+                0, "Lpi:*");
+
         // Insert Lpi into Redis Set: Lpi:{buId}
         lpi.foreachPartition(new ForeachPartitionFunction<Row>() {
             @Override
@@ -35,7 +50,6 @@ public class CacheInitializer {
                 Jedis jedis = new Jedis(redisHost, redisPort);
                 while (t.hasNext()) {
                     Row r = t.next();
-                    Seq<String> piIdSet = r.<Seq<String>>getAs("piIdSet");
                     scala.collection.Iterator<String> iter = r.<Seq<String>>getAs("piIdSet").iterator();
                     while (iter.hasNext()) {
                         String piId = iter.next().toString();
@@ -46,7 +60,16 @@ public class CacheInitializer {
         });
     }
 
+    /**
+     * Initialize AllPi in Redis
+     *
+     * This method reads transaction data of current month and upload distinct Pi into Redis Set.
+     *
+     * @param spark SparkSession
+     */
     private static void initAllPi(SparkSession spark) {
+        Jedis jedis = new Jedis(redisHost, redisPort);
+
         // Load transactions table
         Dataset<Row> transactions = spark.read()
                 .format("org.apache.spark.sql.redis")
@@ -62,6 +85,10 @@ public class CacheInitializer {
                 .groupBy("buId")
                 .agg(functions.collect_set("piId").as("piIdSet"));
 
+        // Clear old AllPi cache
+        jedis.eval("return redis.call('del', 'defaultKey', unpack(redis.call('keys', ARGV[1])))",
+                0, "AllPi:*");
+
         // Insert AllPi into Redis Set: AllPi:{buId}
         allPi.foreachPartition(new ForeachPartitionFunction<Row>() {
             @Override
@@ -69,7 +96,6 @@ public class CacheInitializer {
                 Jedis jedis = new Jedis(redisHost, redisPort);
                 while (t.hasNext()) {
                     Row r = t.next();
-                    Seq<String> piIdSet = r.<Seq<String>>getAs("piIdSet");
                     scala.collection.Iterator<String> iter = r.<Seq<String>>getAs("piIdSet").iterator();
                     while (iter.hasNext()) {
                         String piId = iter.next().toString();
@@ -80,6 +106,13 @@ public class CacheInitializer {
         });
     }
 
+    /**
+     * Initialize RecurPi in Redis
+     *
+     * This method reads transaction data of current month and upload RecurPi into Redis Set.
+     *
+     * @param spark SparkSession
+     */
     private static void initRecurPi(SparkSession spark) {
         // Load transactions table
         Dataset<Row> transactions = spark.read()
@@ -103,7 +136,6 @@ public class CacheInitializer {
                 Jedis jedis = new Jedis(redisHost, redisPort);
                 while (t.hasNext()) {
                     Row r = t.next();
-                    Seq<String> piIdSet = r.<Seq<String>>getAs("piIdSet");
                     scala.collection.Iterator<String> iter = r.<Seq<String>>getAs("piIdSet").iterator();
                     while (iter.hasNext()) {
                         String piId = iter.next().toString();
@@ -123,11 +155,8 @@ public class CacheInitializer {
                 .appName("CacheInitialization")
                 .getOrCreate();
 
-        String redisHost = "localhost";
-        int redisPort = 6379;
-
         // Initialize Lpi based on pre-prepared data file
-        initLpi(spark, "data/m8/cache/", "|");
+        initLpi(spark, "data/m9/cache/", "|");
 
         // Initialize AllPi
         initAllPi(spark);

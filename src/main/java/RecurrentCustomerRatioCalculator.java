@@ -5,7 +5,6 @@ import org.apache.spark.sql.functions;
 import redis.clients.jedis.Jedis;
 
 import java.time.LocalDate;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -16,16 +15,34 @@ public class RecurrentCustomerRatioCalculator {
     private final static int currentYear = LocalDate.now().getYear();
     private final static int currentMonth = LocalDate.now().getMonthValue() - 1;
 
+    /**
+     * Get Count of RecurPi for a given business for current month
+     *
+     * @param buId Business id
+     * @return Count of RecurPi
+     */
     public static long getRecurPiCount(String buId) {
         Jedis jedis = new Jedis(redisHost, redisPort);
         return jedis.scard("RecurPi:" + buId);
     }
 
+    /**
+     * Get Count of AllPi for a given business for current month
+     *
+     * @param buId Business id
+     * @return Count of AllPi
+     */
     public static long getAllPiCount(String buId) {
         Jedis jedis = new Jedis(redisHost, redisPort);
         return jedis.scard("AllPi:" + buId);
     }
 
+    /**
+     * Get current month's Recurrent Customer Ratio for a given business
+     *
+     * @param buId Business id
+     * @return Recurrent Customer Ratio
+     */
     public static float calculateRCR(String buId) {
         Jedis jedis = new Jedis(redisHost, redisPort);
 
@@ -39,6 +56,12 @@ public class RecurrentCustomerRatioCalculator {
         return cntRecurPi / cntAllPi;
     }
 
+    /**
+     * Get history of Recurrent Customer Ratio for a given business
+     *
+     * @param buId Business id
+     * @return History of RCR stored as <K,V> pair where K is year-month and V is the corresponding RCR
+     */
     public static Map<String, String> historicalRCR(String buId) {
         Jedis jedis = new Jedis(redisHost, redisPort);
 
@@ -88,7 +111,9 @@ public class RecurrentCustomerRatioCalculator {
         for (Row r: buIds) {
             String buId = r.getString(0);
             float rcr = calculateRCR(buId);
-            System.out.printf("Current Month's Recurrent Customer Ratio for Business{%s}: %.4f%n", buId, rcr);
+            Map<String, String> history = historicalRCR(buId);
+            System.out.printf("Historical RCR for Business{%s}: {%s}%n", buId, history.toString());
+            System.out.printf("Current Month's RCR for Business{%s}: %.4f%n", buId, rcr);
         }
     }
 }
